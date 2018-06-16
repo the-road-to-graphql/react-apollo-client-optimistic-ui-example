@@ -1,6 +1,6 @@
 # react-apollo-client-optimistic-ui-example
 
-A minimal React application using Apollo Client with GitHub's GraphQL API. As example Apollo Client's optimistic UI feature is implemented.
+A minimal React application using Apollo Client with GitHub's GraphQL API. As example **Apollo Client's optimistic UI feature is implemented**.
 
 ## Installation
 

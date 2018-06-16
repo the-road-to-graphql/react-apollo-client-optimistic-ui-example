@@ -4,33 +4,88 @@ import { Query, Mutation } from 'react-apollo';
 
 import './App.css';
 
+const REPOSITORY_FRAGMENT = gql`
+  fragment repository on Repository {
+    id
+    name
+    url
+    watchers {
+      totalCount
+    }
+    viewerSubscription
+  }
+`;
+
 const GET_REPOSITORIES_OF_ORGANIZATION = gql`
   {
     organization(login: "the-road-to-learn-react") {
       repositories(first: 20) {
         edges {
           node {
-            id
-            name
-            url
-            viewerHasStarred
+            ...repository
           }
         }
       }
     }
   }
+
+  ${REPOSITORY_FRAGMENT}
 `;
 
-const STAR_REPOSITORY = gql`
-  mutation($id: ID!) {
-    addStar(input: { starrableId: $id }) {
-      starrable {
+const WATCH_REPOSITORY = gql`
+  mutation($id: ID!, $viewerSubscription: SubscriptionState!) {
+    updateSubscription(
+      input: { state: $viewerSubscription, subscribableId: $id }
+    ) {
+      subscribable {
         id
-        viewerHasStarred
+        viewerSubscription
       }
     }
   }
 `;
+
+const VIEWER_SUBSCRIPTIONS = {
+  SUBSCRIBED: 'SUBSCRIBED',
+  UNSUBSCRIBED: 'UNSUBSCRIBED',
+};
+
+const isWatch = viewerSubscription =>
+  viewerSubscription === VIEWER_SUBSCRIPTIONS.SUBSCRIBED;
+
+const updateWatch = (
+  client,
+  {
+    data: {
+      updateSubscription: {
+        subscribable: { id, viewerSubscription },
+      },
+    },
+  },
+) => {
+  const repository = client.readFragment({
+    id: `Repository:${id}`,
+    fragment: REPOSITORY_FRAGMENT,
+  });
+
+  let { totalCount } = repository.watchers;
+  totalCount =
+    viewerSubscription === VIEWER_SUBSCRIPTIONS.SUBSCRIBED
+      ? totalCount + 1
+      : totalCount - 1;
+
+  client.writeFragment({
+    id: `Repository:${id}`,
+    fragment: REPOSITORY_FRAGMENT,
+    data: {
+      ...repository,
+      watchers: {
+        ...repository.watchers,
+        totalCount,
+      },
+    },
+  });
+};
 
 const App = () => (
   <Query query={GET_REPOSITORIES_OF_ORGANIZATION}>
@@ -46,79 +101,34 @@ const App = () => (
   </Query>
 );
 
-class Repositories extends React.Component {
-  state = {
-    selectedRepositoryIds: [],
-  };
-
-  toggleSelectRepository = (id, isSelected) => {
-    let { selectedRepositoryIds } = this.state;
-
-    selectedRepositoryIds = isSelected
-      ? selectedRepositoryIds.filter(itemId => itemId !== id)
-      : selectedRepositoryIds.concat(id);
-
-    this.setState({ selectedRepositoryIds });
-  };
-
-  render() {
-    return (
-      <RepositoryList
-        repositories={this.props.repositories}
-        selectedRepositoryIds={this.state.selectedRepositoryIds}
-        toggleSelectRepository={this.toggleSelectRepository}
-      />
-    );
-  }
-}
-
-const RepositoryList = ({
-  repositories,
-  selectedRepositoryIds,
-  toggleSelectRepository,
-}) => (
+const Repositories = ({ repositories }) => (
   <ul>
-    {repositories.edges.map(({ node }) => {
-      const isSelected = selectedRepositoryIds.includes(node.id);
-
-      const rowClassName = ['row'];
-
-      if (isSelected) {
-        rowClassName.push('row_selected');
-      }
-
-      return (
-        <li className={rowClassName.join(' ')} key={node.id}>
-          <Select
-            id={node.id}
-            isSelected={isSelected}
-            toggleSelectRepository={toggleSelectRepository}
-          />{' '}
-          <a href={node.url}>{node.name}</a>{' '}
-          {!node.viewerHasStarred && <Star id={node.id} />}
-        </li>
-      );
-    })}
+    {repositories.edges.map(({ node }) => (
+      <li key={node.id}>
+        <a href={node.url}>{node.name}</a> <Watch repository={node} />
+      </li>
+    ))}
   </ul>
 );
 
-const Star = ({ id }) => (
-  <Mutation mutation={STAR_REPOSITORY} variables={{ id }}>
-    {starRepository => (
-      <button type="button" onClick={starRepository}>
-        Star
+const Watch = ({ repository }) => (
+  <Mutation
+    mutation={WATCH_REPOSITORY}
+    variables={{
+      id: repository.id,
+      viewerSubscription: isWatch(repository.viewerSubscription)
+        ? VIEWER_SUBSCRIPTIONS.UNSUBSCRIBED
+        : VIEWER_SUBSCRIPTIONS.SUBSCRIBED,
+    }}
+    update={updateWatch}
+  >
+    {(updateSubscription, { data, loading, error }) => (
+      <button type="button" onClick={updateSubscription}>
+        {repository.watchers.totalCount}{' '}
+        {isWatch(repository.viewerSubscription) ? 'Unwatch' : 'Watch'}
       </button>
     )}
   </Mutation>
-);
-
-const Select = ({ id, isSelected, toggleSelectRepository }) => (
-  <button
-    type="button"
-    onClick={() => toggleSelectRepository(id, isSelected)}
-  >
-    {isSelected ? 'Unselect' : 'Select'}
-  </button>
 );
 
 export default App;
