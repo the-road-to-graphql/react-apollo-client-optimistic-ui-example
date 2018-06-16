@@ -111,12 +111,14 @@ const Repositories = ({ repositories }) => (
   </ul>
 );
 
-const Watch = ({ repository }) => (
+const Watch = ({
+  repository: { id, viewerSubscription, watchers },
+}) => (
   <Mutation
     mutation={WATCH_REPOSITORY}
     variables={{
-      id: repository.id,
-      viewerSubscription: isWatch(repository.viewerSubscription)
+      id,
+      viewerSubscription: isWatch(viewerSubscription)
         ? VIEWER_SUBSCRIPTIONS.UNSUBSCRIBED
         : VIEWER_SUBSCRIPTIONS.SUBSCRIBED,
     }}
@@ -124,8 +126,8 @@ const Watch = ({ repository }) => (
   >
     {(updateSubscription, { data, loading, error }) => (
       <button type="button" onClick={updateSubscription}>
-        {repository.watchers.totalCount}{' '}
-        {isWatch(repository.viewerSubscription) ? 'Unwatch' : 'Watch'}
+        {watchers.totalCount}{' '}
+        {isWatch(viewerSubscription) ? 'Unwatch' : 'Watch'}
       </button>
     )}
   </Mutation>
