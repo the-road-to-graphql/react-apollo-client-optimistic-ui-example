@@ -1,5 +1,7 @@
 # react-apollo-client-optimistic-ui-example
 
+[![Slack](https://slack-the-road-to-learn-react.wieruch.com/badge.svg)](https://slack-the-road-to-learn-react.wieruch.com/)
+
 A minimal React application using Apollo Client with GitHub's GraphQL API. As example **Apollo Client's optimistic UI feature is implemented**.
 
 ## Installation
